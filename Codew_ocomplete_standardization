@@ -1,0 +1,319 @@
+# wb_capstone
+Complete R-code for World Bank Capstone analysis
+##Capstone####FINAL CODE HERE##
+####order of code# RF, MLR, PCA##
+library(ggplot2)
+library(ggpubr)
+library(dplyr)
+#
+#
+#
+#uploading the dataframe#
+library(readr)
+World_bank <- read.csv("Desktop/DataScience/Worldbank/IBRDDATA_true.csv")
+#View(World_bank)
+########CLEANING DATA##########
+##Removing columns with zero data 
+World_bank$`Currency.of.Commitment`<-NULL
+World_bank$`Last.Disbursement.Date`<-NULL
+World_bank$`Undisbursed.Amount`<-NULL
+World_bank$`Due.3rd.Party`<-NULL
+##World_bank$`Borrower.s.Obligation`<-NULL
+World_bank$`Due.to.IBRD`<-NULL
+World_bank$`Exchange.Adjustment`<- NULL
+World_bank$`Loans.Held`<-NULL
+World_bank$Effective.Date..Most.Recent.<-NULL
+
+#Removing NA's#
+WB_clean<- na.omit(World_bank)
+sum(is.na(WB_clean))
+
+######### Export clean data##########
+###this data will be used for my visuals in Tableau####
+write.table(WB_clean, file="WB_clean.csv",row.names=F, sep=",")
+
+#specify the folder where the file should go##
+write.csv(WB_clean,
+          file="/Users/NajahmeRidley/desktop/DataScience/WB_clean.csv",row.names = F)
+
+
+#Removing time from dates#
+#I need to change the formating there should be no dates past, 01/01/2021#
+#End of Period#
+#WB_clean$`End.of.Period`<- as.Date(WB_clean$`End.of.Period`,"%m/%d/%y")
+
+#First Repayment Date#
+#WB_clean$`First.Repayment.Date`<-as.Date(WB_clean$`First.Repayment.Date`,"%m/%d/%y")
+
+#Last Repayment Date#
+#WB_clean$`Last.Repayment.Date`<-as.Date(WB_clean$`Last.Repayment.Date`,"%m/%d/%y")
+
+#Agreement Signing Date#
+#WB_clean$`Agreement.Signing.Date`<-as.Date(WB_clean$`Agreement.Signing.Date`,"%m/%d/%y")
+
+#Board approval Date#
+#WB_clean$`Board.Approval.Date`<-as.Date(WB_clean$`Board.Approval.Date`,"%m/%d/%y")
+
+#Effective date (most recent)
+#WB_clean$`Effective.Date..Most.Recent`<-as.Date(WB_clean$`Effective.Date..Most.Recent.`,"%m/%d/%Y")
+
+#Close date(most recent)#
+#WB_clean$`Closed.Date..Most.Recent.`<-as.Date(WB_clean$`Closed.Date..Most.Recent.`,"%m/%d/%y")
+
+##Viewing data before next step where we analyze data#
+View(WB_clean)
+
+#separating data into subsection for numerical analysis:
+#subsetting data
+WB_clean2<-WB_clean[,c(-1,-2,-4,-5,-6,-7,-8,-9,-12,-13,-20,-21,-22,-23,-24,-25)]
+View(WB_clean2)
+#setting characters a value to use for analysis#
+  
+#WB_clean2$Country<-as.factor(WB_clean2$Country)
+WB_clean2$Region<-as.factor(WB_clean2$Region)
+WB_clean2$Loan.Status<-as.factor(WB_clean2$Loan.Status)
+WB_clean2$Original.Principal.Amount<-as.factor(WB_clean2$Original.Principal.Amount)
+WB_clean2$Cancelled.Amount<-as.factor(WB_clean2$Cancelled.Amount)
+WB_clean2$Disbursed.Amount<-as.factor(WB_clean2$Disbursed.Amount)
+WB_clean2$Repaid.to.IBRD<-as.factor(WB_clean2$Repaid.to.IBRD)
+WB_clean2$Borrower.s.Obligation<-as.factor(WB_clean2$Borrower.s.Obligation)
+WB_clean2$Sold.3rd.Party<-as.factor(WB_clean2$Sold.3rd.Party)
+
+##View the New and Clean Data base before analysis#
+View(WB_clean2)
+str(WB_clean2)
+head(WB_clean2)
+###learning about the interest rates##
+summary(WB_clean2$Interest.Rate)
+#Results# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##########0.000   0.000   5.160   4.332   7.250  16.790 
+
+
+##separating data into test and set# I will do a 80/20 split. for all my analysis and use
+#the same seed -> set.seed(123)#
+
+#setting the seed for consistent results#
+set.seed(123)
+
+#separating data into the 80/20 split#
+wb_ran<-sample(nrow(WB_clean2),nrow(WB_clean)*0.8)
+
+#establish Test and Train set#
+wb_train<-WB_clean[wb_ran,]
+wb_test<-WB_clean[-wb_ran,]
+
+#code for Random Forest#
+#library RF#
+library(randomForest)
+#random Forest Default code#
+model1<-randomForest(Interest.Rate~., data = wb_train, Importance = TRUE )
+print(model1)
+View(wb_train)
+head(WB_clean)
+
+###train results####
+#Call:
+ # randomForest(formula = Interest.Rate ~ ., data = wb_train, Importance = TRUE) 
+#Type of random forest: regression
+#Number of trees: 500
+#No. of variables tried at each split: 8
+
+#Mean of squared residuals: 0.8865143
+#% Var explained: 92.68
+
+model2<-randomForest(Interest.Rate~., data = wb_test,Importance = TRUE)
+print(model2)
+
+#Call:
+#  randomForest(formula = Interest.Rate ~ ., data = wb_test, Importance = TRUE) 
+#Type of random forest: regression
+#Number of trees: 500
+#No. of variables tried at each split: 8
+
+#Mean of squared residuals: 1.416913
+#% Var explained: 88.25
+
+####calculating the MSE to see how well the model performs##
+#MSE will be our standard metric#
+
+library(MLmetrics)
+#making a prediction#
+
+pred_rf <- predict(model1, wb_test)
+
+#Predictions on Test Set for each Tree
+print(pred_rf)
+plot(pred_rf)
+
+x = 1:length(wb_test$`Interest.Rate`)
+
+plot(x, wb_test$`Interest.Rate`, pch=18, col="red")
+lines(x, pred_rf, lwd="1", col="blue")
+
+
+mse_rf = MSE( wb_test$`Interest.Rate`, pred_rf)
+print(mse_rf)
+#MSE:16.67109
+mae_rf = MAE(wb_test$`Interest.Rate`, pred_rf)
+print(mae_rf)
+#MAE:3.521494
+# Calculating RMSE using rmse()          
+rmse_rf = RMSE(wb_test$`Interest.Rate`, pred_rf)
+print(rmse_rf)
+#RMSE:4.083025
+
+##Test results###
+View(WB_clean)
+##Results##
+##most important variables##
+##Pre-variables##
+#Disbursed amount
+#Region
+#Original Principal Amount
+#Borrower's obligation
+###Moving forward we will only asses the pre-variables#
+#They are factors considered before the loan is dispursed#
+
+##ASSESS: MLR Using Just pre-variables#
+#Region, Original Principal Amount, Disbursed Amount, Borrowers Obligation#
+WB_clean3<-WB_clean2[,c(-2,-5,-7,-9)]
+View(WB_clean3)
+
+#changing factors to numeric
+WB_clean2$Original.Principal.Amount<-as.numeric(WB_clean2$Original.Principal.Amount)
+WB_clean2$Cancelled.Amount<-as.numeric(WB_clean2$Cancelled.Amount)
+WB_clean2$Disbursed.Amount<-as.numeric(WB_clean2$Disbursed.Amount)
+WB_clean2$Repaid.to.IBRD<-as.numeric(WB_clean2$Repaid.to.IBRD)
+WB_clean2$Borrower.s.Obligation<-as.numeric(WB_clean2$Borrower.s.Obligation)
+WB_clean2$Sold.3rd.Party<-as.numeric(WB_clean2$Sold.3rd.Party)
+
+#Post-Variables##
+#Loan-status-easier to pay of loans if there is a lower interest rate
+#Repaid to IBRD
+#Canceled amount
+#Sold to third Party
+
+#########MLR##########
+
+wb_model<-lm(`Interest.Rate`~.,data=WB_clean2)
+summary(wb_model)
+
+Wb_model2<-lm(`Interest.Rate`~., data=WB_clean3)
+summary(Wb_model2)
+
+plot(Interest.Rate)
+###return from MLR###
+#Call:
+###lm(formula = Interest.Rate ~ ., data = WB_clean3)
+
+#Residuals:
+##Min      1Q  Median      3Q     Max 
+##-8.5765 -2.2955  0.4603  2.2499  8.8417 
+
+#Coefficients:
+#####################################Estimate Std. Error t value Pr(>|t|)    
+#(Intercept)                         6.091e+00  1.595e-01  38.189  < 2e-16 ***
+#RegionAFRICA WEST                   2.746e-01  2.094e-01   1.311     0.19    
+#RegionEAST ASIA AND PACIFIC        -9.553e-01  1.635e-01  -5.844 5.26e-09 ***
+#RegionEUROPE AND CENTRAL ASIA      -1.680e+00  1.653e-01 -10.162  < 2e-16 ***
+  #RegionLATIN AMERICA AND CARIBBEAN  -1.495e+00  1.593e-01  -9.385  < 2e-16 ***
+  #RegionMIDDLE EAST AND NORTH AFRICA -1.354e+00  1.744e-01  -7.765 9.06e-15 ***
+  #RegionOTHER                         2.351e+00  2.249e-01  10.454  < 2e-16 ***
+  #RegionSOUTH ASIA                   -1.793e+00  1.980e-01  -9.053  < 2e-16 ***
+  #Original.Principal.Amount          -2.053e-04  3.640e-05  -5.638 1.77e-08 ***
+  #Disbursed.Amount                    1.681e-04  1.925e-05   8.730  < 2e-16 ***
+  #Borrower.s.Obligation              -4.332e-03  7.856e-05 -55.143  < 2e-16 ***
+  ---
+  #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+#Residual standard error: 2.871 on 8837 degrees of freedom
+#Multiple R-squared:  0.3196,	Adjusted R-squared:  0.3188 
+#F-statistic: 415.1 on 10 and 8837 DF,  p-value: < 2.2e-16
+
+
+# use the plot() function to produce diagnostic plots of our liner regression fit.
+par(mfrow = c(2,1))
+#error in view plot#
+
+#####ASSESSING THE RELATIONSHIP BETWEEN AMOUNT LOANED AND INTEREST RATE
+plot(WB_clean2$Disbursed.Amount, WB_clean2$Interest.Rate)
+
+##prediction: positive correlations
+
+#checking for correlation between Interest rate and Disbursed amount#
+loan_fit<-lm(Interest.Rate ~ Disbursed.Amount, data = WB_clean2)
+abline(loan_fit, col="yellow")
+
+#checking for correlation between region and Interest Rate#
+WB_clean2$Region.Numeric<-as.numeric(WB_clean2$Region)
+View(WB_clean2)
+#plotting region/ intereste rate
+
+plot(WB_clean2$Region,WB_clean2$Interest.Rate)
+
+regloan_fit<-lm(Regionn)
+
+#checking to see what percent of loans issued are 0% interest#
+int_zero<-WB_clean3[WB_clean3$Interest.Rate=="0",]
+count(int_zero)
+##Percent of loans equal to Zero##
+2418/8848
+#27.33%# Percent of loans are equal to zero#
+
+#what percent of interest rates are = 16.79%#
+int_high<-WB_clean3[WB_clean3$Interest.Rate=="16.79",]
+count(int_high)
+1/8848*100
+#.011% has the highest interest rate
+
+####.011% of the loans are 16.79%###
+
+##calculating the MSE to see how well the model performs compared to RF#
+
+#####
+reg <- lm(Interest.Rate~., data = WB_clean3)
+View(reg)
+MSE(y_pred = exp(reg$fitted.values), y_true = WB_clean3$`Interest.Rate`)
+
+
+#########################PCA##########################################
+library(partykit)
+library(factoextra)
+#############################################
+#creating corresponding column for PCA Analysis on Factor#
+WB_clean3$Region_no<-as.numeric(WB_clean2$Region)
+head(WB_clean3)
+#defining data for analysis#
+int_reg<-WB_clean3[c(2,6)]
+head(int_reg)
+str(int_reg)
+#computation for PCA analysis#
+intreg_pca<-prcomp(int_reg, scale=TRUE)
+##looking to see the variance explained by each component thru screeplot##
+fviz_eig(intreg_pca)
+
+#graphing individual components to see how they effect the whole#
+fviz_pca_var(intreg_pca)
+
+#adding additional Variables for further analysis#
+#converting numeric values from factors to numeric for PCA analysis#
+WB_clean3$Original.Principal.Amount<-as.numeric(WB_clean3$Original.Principal.Amount)
+WB_clean3$Disbursed.Amount<-as.numeric(WB_clean3$Disbursed.Amount)
+WB_clean3$Borrower.s.Obligation<-as.numeric(WB_clean3$Borrower.s.Obligation)
+str(WB_clean3)
+##including all variables in WB_clean3# after they have been converted to numeric#
+
+int_all<-WB_clean3[c(2:6)]
+str(int_all)
+#computation for PCA analysis#
+intall_pca<-prcomp(int_all,scale=TRUE)
+#graphing individual components for analysis#
+fviz_pca_var(intall_pca,col.var="contrib",col.ind ="cos2",repel=TRUE)
+
+#There is a very minor negative correlation between the 
+#Interest rate and the amount Disbursed
+##Creating a difference in date column to show the time is took from the time the loan was disperse to the time the loan was paid off@
+#WB_clean$repayment.time<-with(WB_clean,difftime(Last.Repayment.Date,First.Repayment.Date, units = "weeks"))
+
+#combining numeric values for analysis#
+
