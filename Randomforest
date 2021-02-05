@@ -1,0 +1,86 @@
+
+##separating data into test and set# I will do a 80/20 split. for all my analysis and use
+#the same seed -> set.seed(123)#
+
+#setting the seed for consistent results#
+set.seed(123)
+
+#separating data into the 80/20 split#
+wb_ran<-sample(nrow(WB_clean2),nrow(WB_clean)*0.8)
+
+#establish Test and Train set#
+wb_train<-WB_clean[wb_ran,]
+wb_test<-WB_clean[-wb_ran,]
+
+#code for Random Forest#
+#library RF#
+library(randomForest)
+#random Forest Default code#
+model1<-randomForest(Interest.Rate~., data = wb_train, Importance = TRUE )
+print(model1)
+View(wb_train)
+head(WB_clean)
+
+###train results####
+#Call:
+ # randomForest(formula = Interest.Rate ~ ., data = wb_train, Importance = TRUE) 
+#Type of random forest: regression
+#Number of trees: 500
+#No. of variables tried at each split: 8
+
+#Mean of squared residuals: 0.8865143
+#% Var explained: 92.68
+
+model2<-randomForest(Interest.Rate~., data = wb_test,Importance = TRUE)
+print(model2)
+
+#Call:
+#  randomForest(formula = Interest.Rate ~ ., data = wb_test, Importance = TRUE) 
+#Type of random forest: regression
+#Number of trees: 500
+#No. of variables tried at each split: 8
+
+#Mean of squared residuals: 1.416913
+#% Var explained: 88.25
+
+####calculating the MSE to see how well the model performs##
+#MSE will be our standard metric#
+
+library(MLmetrics)
+#making a prediction#
+
+pred_rf <- predict(model1, wb_test)
+
+#Predictions on Test Set for each Tree
+print(pred_rf)
+plot(pred_rf)
+
+x = 1:length(wb_test$`Interest.Rate`)
+
+plot(x, wb_test$`Interest.Rate`, pch=18, col="red")
+lines(x, pred_rf, lwd="1", col="blue")
+
+#calculating the MSE/ MAE & RMSE to use as common metric and see how well the model performed.#
+
+mse_rf = MSE( wb_test$`Interest.Rate`, pred_rf)
+print(mse_rf)
+#MSE:16.67109
+mae_rf = MAE(wb_test$`Interest.Rate`, pred_rf)
+print(mae_rf)
+#MAE:3.521494
+# Calculating RMSE using rmse()          
+rmse_rf = RMSE(wb_test$`Interest.Rate`, pred_rf)
+print(rmse_rf)
+#RMSE:4.083025
+
+##Test results###
+View(WB_clean)
+##Results##
+##most important variables##
+##Pre-variables##
+#Disbursed amount
+#Region
+#Original Principal Amount
+#Borrower's obligation
+###Moving forward we will only asses the pre-variables#
+#They are factors considered before the loan is dispursed#
